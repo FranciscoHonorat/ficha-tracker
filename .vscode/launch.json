@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Wails: Production ficha-tracker",
+      "type": "go",
+      "request": "launch",
+      "mode": "exec",
+      "program": "${workspaceFolder}/build/bin/ficha-tracker",
+      "preLaunchTask": "build",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Wails: Debug ficha-tracker",
+      "type": "go",
+      "request": "launch",
+      "mode": "exec",
+      "program": "${workspaceFolder}/build/bin/ficha-tracker",
+      "preLaunchTask": "build debug",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Wails: Dev ficha-tracker",
+      "type": "go",
+      "request": "launch",
+      "mode": "exec",
+      "program": "${workspaceFolder}/build/bin/ficha-tracker",
+      "preLaunchTask": "build dev",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

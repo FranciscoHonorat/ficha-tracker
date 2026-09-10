@@ -1,0 +1,161 @@
+#App {
+    min-height: 100vh;
+    text-align: left;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: #1d4ed8;
+}
+
+.header p {
+    margin: 4px 0 0;
+    color: #4a6b8a;
+}
+
+.content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.card {
+    background: #ffffff;
+    border: 1px solid #dce7f5;
+    border-radius: 8px;
+    padding: 20px;
+    flex: 1 1 320px;
+    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.06);
+}
+
+.card h2 {
+    margin: 0 0 16px;
+    font-size: 1.1rem;
+    color: #14304d;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #4a6b8a;
+}
+
+.form input {
+    border: 1px solid #c7d9f0;
+    border-radius: 4px;
+    outline: none;
+    height: 34px;
+    padding: 0 10px;
+    background-color: #ffffff;
+    color: #14304d;
+    font-size: 0.95rem;
+}
+
+.form input:focus {
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.15);
+}
+
+.btn {
+    height: 38px;
+    border-radius: 4px;
+    border: none;
+    margin-top: 4px;
+    padding: 0 16px;
+    cursor: pointer;
+    background-color: #1d4ed8;
+    color: white;
+    font-weight: 600;
+}
+
+.btn:hover {
+    background-color: #1741b8;
+}
+
+.btn:disabled {
+    background-color: #a9bcd8;
+    cursor: not-allowed;
+}
+
+.message {
+    margin: 12px 0 0;
+    font-size: 0.85rem;
+}
+
+.message.error {
+    color: #c0362c;
+}
+
+.message.success {
+    color: #1d7a4c;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.list-header h2 {
+    margin: 0;
+}
+
+.search {
+    border: 1px solid #c7d9f0;
+    border-radius: 4px;
+    outline: none;
+    height: 32px;
+    padding: 0 10px;
+    background-color: #ffffff;
+    color: #14304d;
+    min-width: 180px;
+}
+
+.search:focus {
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.15);
+}
+
+.empty {
+    color: #4a6b8a;
+    font-size: 0.9rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.table th,
+.table td {
+    text-align: left;
+    padding: 8px 6px;
+    border-bottom: 1px solid #dce7f5;
+}
+
+.table th {
+    color: #1d4ed8;
+    font-weight: 600;
+}
