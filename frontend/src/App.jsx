@@ -1,8 +1,13 @@
 import {useEffect, useState} from 'react';
 import './App.css';
-import {ListFichas, RegisterFicha, SearchFichasByName} from "../wailsjs/go/main/App";
+import {ListAvailableMonths, ListFichas, RegisterFicha} from "../wailsjs/go/main/App";
 
 const emptyForm = {fullName: '', requestType: '', acs: ''};
+
+function currentMonth() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
 function formatDateTime(isoString) {
     const date = new Date(isoString);
@@ -10,27 +15,46 @@ function formatDateTime(isoString) {
     return date.toLocaleString('pt-BR');
 }
 
+function formatMonthLabel(month) {
+    const [year, monthNumber] = month.split('-');
+    const date = new Date(Number(year), Number(monthNumber) - 1, 1);
+    const label = date.toLocaleDateString('pt-BR', {month: 'long', year: 'numeric'});
+    return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 function App() {
     const [form, setForm] = useState(emptyForm);
     const [fichas, setFichas] = useState([]);
     const [query, setQuery] = useState('');
+    const [months, setMonths] = useState([currentMonth()]);
+    const [selectedMonth, setSelectedMonth] = useState(currentMonth());
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    const loadFichas = (name) => {
-        const request = name ? SearchFichasByName(name) : ListFichas();
-        request.then(setFichas).catch((err) => setError(String(err)));
+    const loadMonths = () => {
+        ListAvailableMonths()
+            .then((found) => {
+                const merged = Array.from(new Set([currentMonth(), ...(found || [])]));
+                merged.sort().reverse();
+                setMonths(merged);
+            })
+            .catch((err) => setError(String(err)));
+    };
+
+    const loadFichas = (name, month) => {
+        ListFichas(name, month).then(setFichas).catch((err) => setError(String(err)));
     };
 
     useEffect(() => {
-        loadFichas('');
+        loadMonths();
+        loadFichas('', selectedMonth);
     }, []);
 
     useEffect(() => {
-        const timeout = setTimeout(() => loadFichas(query.trim()), 250);
+        const timeout = setTimeout(() => loadFichas(query.trim(), selectedMonth), 250);
         return () => clearTimeout(timeout);
-    }, [query]);
+    }, [query, selectedMonth]);
 
     const updateField = (field) => (e) => {
         setForm((prev) => ({...prev, [field]: e.target.value}));
@@ -46,7 +70,8 @@ function App() {
             .then((ficha) => {
                 setSuccess(`Ficha de ${ficha.fullName} registrada com sucesso.`);
                 setForm(emptyForm);
-                loadFichas(query.trim());
+                loadMonths();
+                loadFichas(query.trim(), selectedMonth);
             })
             .catch((err) => setError(String(err)))
             .finally(() => setSubmitting(false));
@@ -105,13 +130,26 @@ function App() {
                 <section className="card">
                     <div className="list-header">
                         <h2>Fichas registradas</h2>
-                        <input
-                            type="text"
-                            className="search"
-                            placeholder="Buscar por nome..."
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                        />
+                        <div className="list-filters">
+                            <select
+                                className="month-select"
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(e.target.value)}
+                            >
+                                {months.map((month) => (
+                                    <option key={month} value={month}>
+                                        {formatMonthLabel(month)}
+                                    </option>
+                                ))}
+                            </select>
+                            <input
+                                type="text"
+                                className="search"
+                                placeholder="Buscar por nome..."
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                            />
+                        </div>
                     </div>
 
                     {fichas.length === 0 ? (

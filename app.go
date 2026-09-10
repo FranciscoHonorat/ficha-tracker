@@ -59,20 +59,19 @@ func (a *App) RegisterFicha(fullName, requestType, acs string) (FichaView, error
 	return toFichaView(ficha), nil
 }
 
-// ListFichas returns every ficha registered so far, most recent first.
-func (a *App) ListFichas() ([]FichaView, error) {
-	fichas, err := a.fichaSv.ListFichas()
+// ListFichas returns fichas matching an optional name filter and an
+// optional month filter ("YYYY-MM"), most recent first. Pass an empty
+// string to skip a filter.
+func (a *App) ListFichas(name, month string) ([]FichaView, error) {
+	fichas, err := a.fichaSv.ListFichas(name, month)
 	if err != nil {
 		return nil, err
 	}
 	return toFichaViews(fichas), nil
 }
 
-// SearchFichasByName returns every ficha whose name contains the given query.
-func (a *App) SearchFichasByName(name string) ([]FichaView, error) {
-	fichas, err := a.fichaSv.SearchFichasByName(name)
-	if err != nil {
-		return nil, err
-	}
-	return toFichaViews(fichas), nil
+// ListAvailableMonths returns every month ("YYYY-MM") that has at least one
+// ficha registered, most recent first.
+func (a *App) ListAvailableMonths() ([]string, error) {
+	return a.fichaSv.ListAvailableMonths()
 }

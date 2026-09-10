@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"ficha-tracker/internal/domain"
 
@@ -23,24 +24,37 @@ func (r *fakeFichaRepository) Save(ficha *domain.Ficha) error {
 	return nil
 }
 
-func (r *fakeFichaRepository) FindAll() ([]*domain.Ficha, error) {
-	if r.findErr != nil {
-		return nil, r.findErr
-	}
-	return r.saved, nil
-}
-
-func (r *fakeFichaRepository) FindByName(name string) ([]*domain.Ficha, error) {
+func (r *fakeFichaRepository) Find(name, month string) ([]*domain.Ficha, error) {
 	if r.findErr != nil {
 		return nil, r.findErr
 	}
 	var result []*domain.Ficha
 	for _, f := range r.saved {
-		if f.FullName == name {
-			result = append(result, f)
+		if name != "" && f.FullName != name {
+			continue
 		}
+		if month != "" && f.CreatedAt.Format("2006-01") != month {
+			continue
+		}
+		result = append(result, f)
 	}
 	return result, nil
+}
+
+func (r *fakeFichaRepository) FindMonths() ([]string, error) {
+	if r.findErr != nil {
+		return nil, r.findErr
+	}
+	seen := map[string]bool{}
+	var months []string
+	for _, f := range r.saved {
+		month := f.CreatedAt.Format("2006-01")
+		if !seen[month] {
+			seen[month] = true
+			months = append(months, month)
+		}
+	}
+	return months, nil
 }
 
 func TestFichaService_RegisterFicha(t *testing.T) {
@@ -85,31 +99,51 @@ func TestFichaService_ListFichas(t *testing.T) {
 	_, _ = service.RegisterFicha("John Doe", "Exame de sangue", "Maria ACS")
 	_, _ = service.RegisterFicha("Jane Doe", "Exame de sangue", "Maria ACS")
 
-	fichas, err := service.ListFichas()
+	fichas, err := service.ListFichas("", "")
 
 	assert.NoError(t, err)
 	assert.Len(t, fichas, 2)
 }
 
-func TestFichaService_SearchFichasByName(t *testing.T) {
+func TestFichaService_ListFichas_FilterByName(t *testing.T) {
 	repo := &fakeFichaRepository{}
 	service := NewFichaService(repo)
 
 	_, _ = service.RegisterFicha("John Doe", "Exame de sangue", "Maria ACS")
 	_, _ = service.RegisterFicha("Jane Doe", "Exame de sangue", "Maria ACS")
 
-	t.Run("finds fichas matching the name", func(t *testing.T) {
-		fichas, err := service.SearchFichasByName("John Doe")
+	fichas, err := service.ListFichas("John Doe", "")
 
-		assert.NoError(t, err)
-		assert.Len(t, fichas, 1)
-		assert.Equal(t, "John Doe", fichas[0].FullName)
-	})
+	assert.NoError(t, err)
+	assert.Len(t, fichas, 1)
+	assert.Equal(t, "John Doe", fichas[0].FullName)
+}
 
-	t.Run("rejects an empty name", func(t *testing.T) {
-		fichas, err := service.SearchFichasByName("")
+func TestFichaService_ListFichas_FilterByMonth(t *testing.T) {
+	repo := &fakeFichaRepository{}
+	service := NewFichaService(repo)
 
-		assert.Error(t, err)
-		assert.Nil(t, fichas)
-	})
+	_, _ = service.RegisterFicha("John Doe", "Exame de sangue", "Maria ACS")
+
+	currentMonth := time.Now().Format("2006-01")
+
+	fichas, err := service.ListFichas("", currentMonth)
+	assert.NoError(t, err)
+	assert.Len(t, fichas, 1)
+
+	fichas, err = service.ListFichas("", "1999-01")
+	assert.NoError(t, err)
+	assert.Empty(t, fichas)
+}
+
+func TestFichaService_ListAvailableMonths(t *testing.T) {
+	repo := &fakeFichaRepository{}
+	service := NewFichaService(repo)
+
+	_, _ = service.RegisterFicha("John Doe", "Exame de sangue", "Maria ACS")
+
+	months, err := service.ListAvailableMonths()
+
+	assert.NoError(t, err)
+	assert.Contains(t, months, time.Now().Format("2006-01"))
 }

@@ -1,8 +1,6 @@
 package service
 
 import (
-	"errors"
-
 	"ficha-tracker/internal/domain"
 
 	"github.com/google/uuid"
@@ -12,8 +10,13 @@ import (
 // It is implemented by the SQLite repository in internal/repository.
 type FichaRepository interface {
 	Save(ficha *domain.Ficha) error
-	FindAll() ([]*domain.Ficha, error)
-	FindByName(name string) ([]*domain.Ficha, error)
+	// Find returns fichas matching an optional name filter (substring) and
+	// an optional month filter ("YYYY-MM"), most recent first. An empty
+	// string skips that filter.
+	Find(name, month string) ([]*domain.Ficha, error)
+	// FindMonths returns every month ("YYYY-MM") that has at least one
+	// ficha registered, most recent first.
+	FindMonths() ([]string, error)
 }
 
 type FichaService struct {
@@ -38,15 +41,15 @@ func (s *FichaService) RegisterFicha(fullName, requestType, acs string) (*domain
 	return ficha, nil
 }
 
-// ListFichas returns every ficha ever registered, most recent first.
-func (s *FichaService) ListFichas() ([]*domain.Ficha, error) {
-	return s.repo.FindAll()
+// ListFichas returns fichas matching an optional name filter and an
+// optional month filter ("YYYY-MM"), most recent first. Pass an empty
+// string to skip a filter.
+func (s *FichaService) ListFichas(name, month string) ([]*domain.Ficha, error) {
+	return s.repo.Find(name, month)
 }
 
-// SearchFichasByName returns every ficha whose name matches the given query.
-func (s *FichaService) SearchFichasByName(name string) ([]*domain.Ficha, error) {
-	if name == "" {
-		return nil, errors.New("name is required")
-	}
-	return s.repo.FindByName(name)
+// ListAvailableMonths returns every month ("YYYY-MM") that has at least one
+// ficha registered, most recent first.
+func (s *FichaService) ListAvailableMonths() ([]string, error) {
+	return s.repo.FindMonths()
 }

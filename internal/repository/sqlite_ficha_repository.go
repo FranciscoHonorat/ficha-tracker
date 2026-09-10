@@ -45,10 +45,24 @@ func (r *SQLiteFichaRepository) Save(ficha *domain.Ficha) error {
 	return nil
 }
 
-func (r *SQLiteFichaRepository) FindAll() ([]*domain.Ficha, error) {
-	rows, err := r.db.Query(
-		`SELECT id, full_name, request_type, acs, created_at FROM fichas ORDER BY created_at DESC`,
-	)
+// Find returns fichas matching an optional name filter (substring) and an
+// optional month filter ("YYYY-MM"), most recent first. An empty string
+// skips that filter.
+func (r *SQLiteFichaRepository) Find(name, month string) ([]*domain.Ficha, error) {
+	query := `SELECT id, full_name, request_type, acs, created_at FROM fichas WHERE 1=1`
+	var args []interface{}
+
+	if name != "" {
+		query += ` AND full_name LIKE '%' || ? || '%'`
+		args = append(args, name)
+	}
+	if month != "" {
+		query += ` AND substr(created_at, 1, 7) = ?`
+		args = append(args, month)
+	}
+	query += ` ORDER BY created_at DESC`
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("listing fichas: %w", err)
 	}
@@ -57,17 +71,29 @@ func (r *SQLiteFichaRepository) FindAll() ([]*domain.Ficha, error) {
 	return scanFichas(rows)
 }
 
-func (r *SQLiteFichaRepository) FindByName(name string) ([]*domain.Ficha, error) {
+// FindMonths returns every month ("YYYY-MM") that has at least one ficha
+// registered, most recent first.
+func (r *SQLiteFichaRepository) FindMonths() ([]string, error) {
 	rows, err := r.db.Query(
-		`SELECT id, full_name, request_type, acs, created_at FROM fichas WHERE full_name LIKE '%' || ? || '%' ORDER BY created_at DESC`,
-		name,
+		`SELECT DISTINCT substr(created_at, 1, 7) FROM fichas ORDER BY 1 DESC`,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("searching fichas: %w", err)
+		return nil, fmt.Errorf("listing ficha months: %w", err)
 	}
 	defer rows.Close()
 
-	return scanFichas(rows)
+	var months []string
+	for rows.Next() {
+		var month string
+		if err := rows.Scan(&month); err != nil {
+			return nil, fmt.Errorf("scanning ficha month: %w", err)
+		}
+		months = append(months, month)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("reading ficha months: %w", err)
+	}
+	return months, nil
 }
 
 func scanFichas(rows *sql.Rows) ([]*domain.Ficha, error) {

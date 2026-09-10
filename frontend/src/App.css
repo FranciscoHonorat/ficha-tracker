@@ -121,7 +121,14 @@
     margin: 0;
 }
 
-.search {
+.list-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.search,
+.month-select {
     border: 1px solid #c7d9f0;
     border-radius: 4px;
     outline: none;
@@ -132,7 +139,8 @@
     min-width: 180px;
 }
 
-.search:focus {
+.search:focus,
+.month-select:focus {
     border-color: #1d4ed8;
     box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.15);
 }
