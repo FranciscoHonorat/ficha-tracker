@@ -47,6 +47,19 @@ type ACSView struct {
 	CreatedAt string `json:"createdAt"`
 }
 
+// RequestTypeStatView is the wire format for domain.RequestTypeStat.
+type RequestTypeStatView struct {
+	RequestType string `json:"requestType"`
+	Count       int    `json:"count"`
+}
+
+// ACSStatView is the wire format for domain.ACSStat.
+type ACSStatView struct {
+	ACSID   string `json:"acsId"`
+	ACSName string `json:"acsName"`
+	Count   int    `json:"count"`
+}
+
 func toFichaView(f *domain.Ficha) FichaView {
 	return FichaView{
 		ID:          f.ID.String(),
@@ -214,4 +227,33 @@ func (a *App) ListFichasByACS(acsID string) ([]FichaView, error) {
 // ficha registered, most recent first.
 func (a *App) ListAvailableMonths() ([]string, error) {
 	return a.fichaSv.ListAvailableMonths()
+}
+
+// StatsByRequestType returns exam counts per request type for the given
+// analysis window ("YYYY-MM-DD" dates; pass an empty string to leave a
+// bound open).
+func (a *App) StatsByRequestType(start, end string) ([]RequestTypeStatView, error) {
+	stats, err := a.fichaSv.StatsByRequestType(start, end)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]RequestTypeStatView, 0, len(stats))
+	for _, s := range stats {
+		views = append(views, RequestTypeStatView{RequestType: s.RequestType, Count: s.Count})
+	}
+	return views, nil
+}
+
+// StatsByACS returns exam counts per ACS for the given analysis window
+// ("YYYY-MM-DD" dates; pass an empty string to leave a bound open).
+func (a *App) StatsByACS(start, end string) ([]ACSStatView, error) {
+	stats, err := a.fichaSv.StatsByACS(start, end)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]ACSStatView, 0, len(stats))
+	for _, s := range stats {
+		views = append(views, ACSStatView{ACSID: s.ACSID.String(), ACSName: s.ACSName, Count: s.Count})
+	}
+	return views, nil
 }

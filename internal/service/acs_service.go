@@ -29,10 +29,11 @@ type FichaCounter interface {
 type ACSService struct {
 	repo         ACSRepository
 	fichaCounter FichaCounter
+	deleteLog    DeleteLogRepository
 }
 
-func NewACSService(repo ACSRepository, fichaCounter FichaCounter) *ACSService {
-	return &ACSService{repo: repo, fichaCounter: fichaCounter}
+func NewACSService(repo ACSRepository, fichaCounter FichaCounter, deleteLog DeleteLogRepository) *ACSService {
+	return &ACSService{repo: repo, fichaCounter: fichaCounter, deleteLog: deleteLog}
 }
 
 // RegisterACS validates and persists a new ACS, rejecting duplicate names
@@ -73,7 +74,8 @@ func (s *ACSService) UpdateACS(id uuid.UUID, name, phone string) (*domain.ACS, e
 	return acs, nil
 }
 
-// DeleteACS removes an ACS, refusing to do so while fichas still reference it.
+// DeleteACS removes an ACS, refusing to do so while fichas still reference
+// it, and logs the deletion's timestamp.
 func (s *ACSService) DeleteACS(id uuid.UUID) error {
 	count, err := s.fichaCounter.CountByACSID(id)
 	if err != nil {
@@ -82,7 +84,10 @@ func (s *ACSService) DeleteACS(id uuid.UUID) error {
 	if count > 0 {
 		return domain.ErrACSHasFichas
 	}
-	return s.repo.Delete(id)
+	if err := s.repo.Delete(id); err != nil {
+		return err
+	}
+	return s.deleteLog.Record()
 }
 
 // ListACS returns every registered ACS.

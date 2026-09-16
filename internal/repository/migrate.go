@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -76,8 +77,8 @@ func migrateLegacyACS(db *sql.DB) error {
 		switch {
 		case err == sql.ErrNoRows:
 			if _, err := tx.Exec(
-				`INSERT INTO acs (id, name, phone, created_at) VALUES (?, ?, '', datetime('now'))`,
-				uuid.New().String(), name,
+				`INSERT INTO acs (id, name, phone, created_at) VALUES (?, ?, '', ?)`,
+				uuid.New().String(), name, time.Now().Format(rfc3339),
 			); err != nil {
 				return fmt.Errorf("backfilling acs %q: %w", name, err)
 			}

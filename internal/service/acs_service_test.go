@@ -91,7 +91,7 @@ func (c *fakeFichaCounter) CountByACSID(acsID uuid.UUID) (int, error) {
 func newTestACSService() (*ACSService, *fakeACSRepository, *fakeFichaCounter) {
 	repo := &fakeACSRepository{}
 	counter := &fakeFichaCounter{counts: map[uuid.UUID]int{}}
-	return NewACSService(repo, counter), repo, counter
+	return NewACSService(repo, counter, &fakeDeleteLogRepository{}), repo, counter
 }
 
 func TestACSService_RegisterACS(t *testing.T) {
@@ -178,6 +178,19 @@ func TestACSService_DeleteACS(t *testing.T) {
 
 		err = service.DeleteACS(acs.ID)
 		assert.ErrorIs(t, err, domain.ErrACSHasFichas)
+	})
+
+	t.Run("logs the deletion", func(t *testing.T) {
+		repo := &fakeACSRepository{}
+		counter := &fakeFichaCounter{counts: map[uuid.UUID]int{}}
+		deleteLog := &fakeDeleteLogRepository{}
+		service := NewACSService(repo, counter, deleteLog)
+
+		acs, err := service.RegisterACS("Maria", "11999999999")
+		require.NoError(t, err)
+
+		require.NoError(t, service.DeleteACS(acs.ID))
+		assert.Equal(t, 1, deleteLog.records)
 	})
 }
 

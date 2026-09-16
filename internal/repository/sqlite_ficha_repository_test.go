@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS fichas (
 	id TEXT PRIMARY KEY,
 	full_name TEXT NOT NULL,
 	request_type TEXT NOT NULL,
+	acs TEXT NOT NULL,
 	acs_id TEXT NOT NULL,
 	phone TEXT NOT NULL DEFAULT '',
 	notified INTEGER NOT NULL DEFAULT 1,
@@ -190,4 +191,62 @@ func TestSQLiteFichaRepository_FindByACSIDAndCount(t *testing.T) {
 	count, err = repo.CountByACSID(otherACSID)
 	require.NoError(t, err)
 	assert.Equal(t, 1, count)
+}
+
+func TestSQLiteFichaRepository_Stats(t *testing.T) {
+	repo := newTestRepository(t)
+	acsID := seedACS(t, repo, "Maria ACS")
+	otherACSID := seedACS(t, repo, "Joana ACS")
+
+	inWindow := &domain.Ficha{
+		ID: uuid.New(), FullName: "John Doe", RequestType: "Exame de sangue",
+		ACSID: acsID, Notified: true, CreatedAt: time.Date(2024, 6, 10, 10, 0, 0, 0, time.UTC),
+	}
+	alsoInWindow := &domain.Ficha{
+		ID: uuid.New(), FullName: "Jane Smith", RequestType: "Exame de sangue",
+		ACSID: acsID, Notified: true, CreatedAt: time.Date(2024, 6, 15, 10, 0, 0, 0, time.UTC),
+	}
+	otherACSInWindow := &domain.Ficha{
+		ID: uuid.New(), FullName: "Mary Doe", RequestType: "RX",
+		ACSID: otherACSID, Notified: true, CreatedAt: time.Date(2024, 6, 20, 10, 0, 0, 0, time.UTC),
+	}
+	outOfWindow := &domain.Ficha{
+		ID: uuid.New(), FullName: "Old Patient", RequestType: "RX",
+		ACSID: acsID, Notified: true, CreatedAt: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC),
+	}
+	for _, f := range []*domain.Ficha{inWindow, alsoInWindow, otherACSInWindow, outOfWindow} {
+		require.NoError(t, repo.Save(f))
+	}
+
+	t.Run("CountByRequestType with no window", func(t *testing.T) {
+		stats, err := repo.CountByRequestType("", "")
+		require.NoError(t, err)
+		require.Len(t, stats, 2)
+		assert.Equal(t, "Exame de sangue", stats[0].RequestType)
+		assert.Equal(t, 2, stats[0].Count)
+		assert.Equal(t, "RX", stats[1].RequestType)
+		assert.Equal(t, 2, stats[1].Count)
+	})
+
+	t.Run("CountByRequestType within a window", func(t *testing.T) {
+		stats, err := repo.CountByRequestType("2024-06-01", "2024-06-30")
+		require.NoError(t, err)
+		require.Len(t, stats, 2)
+		total := 0
+		for _, s := range stats {
+			total += s.Count
+		}
+		assert.Equal(t, 3, total)
+	})
+
+	t.Run("CountByACS within a window", func(t *testing.T) {
+		stats, err := repo.CountByACS("2024-06-01", "2024-06-30")
+		require.NoError(t, err)
+		require.Len(t, stats, 2)
+		assert.Equal(t, acsID, stats[0].ACSID)
+		assert.Equal(t, "Maria ACS", stats[0].ACSName)
+		assert.Equal(t, 2, stats[0].Count)
+		assert.Equal(t, otherACSID, stats[1].ACSID)
+		assert.Equal(t, 1, stats[1].Count)
+	})
 }

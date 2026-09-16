@@ -12,6 +12,18 @@ import (
 
 const rfc3339 = time.RFC3339Nano
 
+// sqliteDatetimeFormat is what SQLite's datetime('now') produces. A prior
+// version of the legacy-data migration wrote timestamps with that function
+// instead of rfc3339; parseStoredTime keeps those existing rows readable.
+const sqliteDatetimeFormat = "2006-01-02 15:04:05"
+
+func parseStoredTime(value string) (time.Time, error) {
+	if t, err := time.Parse(rfc3339, value); err == nil {
+		return t, nil
+	}
+	return time.Parse(sqliteDatetimeFormat, value)
+}
+
 // scanFicha scans a row produced by a query that selects, in order:
 // id, full_name, request_type, acs_id, phone, notified, created_at, and
 // optionally a trailing joined acs name (acsName is empty when not selected).
@@ -41,7 +53,7 @@ func scanFicha(rows *sql.Rows, withACSName bool) (*domain.Ficha, error) {
 		return nil, fmt.Errorf("parsing ficha acs_id: %w", err)
 	}
 
-	createdAt, err := time.Parse(rfc3339, createdAtStr)
+	createdAt, err := parseStoredTime(createdAtStr)
 	if err != nil {
 		return nil, fmt.Errorf("parsing ficha created_at: %w", err)
 	}
@@ -87,7 +99,7 @@ func scanACS(rows *sql.Rows) (*domain.ACS, error) {
 		return nil, fmt.Errorf("parsing acs id: %w", err)
 	}
 
-	createdAt, err := time.Parse(rfc3339, createdAtStr)
+	createdAt, err := parseStoredTime(createdAtStr)
 	if err != nil {
 		return nil, fmt.Errorf("parsing acs created_at: %w", err)
 	}

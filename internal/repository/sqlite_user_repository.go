@@ -3,7 +3,6 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-	"time"
 
 	"ficha-tracker/internal/domain"
 
@@ -55,7 +54,7 @@ func (r *SQLiteUserRepository) FindByUsername(username string) (*domain.User, er
 		return nil, fmt.Errorf("parsing user id: %w", err)
 	}
 
-	createdAt, err := time.Parse(rfc3339, createdAtStr)
+	createdAt, err := parseStoredTime(createdAtStr)
 	if err != nil {
 		return nil, fmt.Errorf("parsing user created_at: %w", err)
 	}
