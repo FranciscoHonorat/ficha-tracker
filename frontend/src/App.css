@@ -266,6 +266,26 @@
     color: #4a6b8a;
 }
 
+.checkbox-label {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #4a6b8a;
+}
+
+.checkbox-label input {
+    width: auto;
+    height: auto;
+}
+
+.hint {
+    margin: 0 0 12px;
+    font-size: 0.85rem;
+    color: #4a6b8a;
+}
+
 .date-filters input {
     border: 1px solid #c7d9f0;
     border-radius: 4px;

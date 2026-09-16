@@ -45,11 +45,14 @@ func main() {
 		log.Fatalf("purging old deletion records: %v", err)
 	}
 
+	backupRepo := repository.NewBackupRepository(db)
+
 	fichaService := service.NewFichaService(fichaRepo, acsRepo, deleteLogRepo)
 	acsService := service.NewACSService(acsRepo, fichaRepo, deleteLogRepo)
 	authService := service.NewAuthService(userRepo)
+	backupService := service.NewBackupService(backupRepo)
 
-	app := NewApp(fichaService, acsService, authService)
+	app := NewApp(fichaService, acsService, authService, backupService)
 
 	err = wails.Run(&options.App{
 		Title:  "ficha-tracker",

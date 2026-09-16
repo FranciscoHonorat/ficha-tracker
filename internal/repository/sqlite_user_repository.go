@@ -75,3 +75,11 @@ func (r *SQLiteUserRepository) CountAll() (int, error) {
 	}
 	return count, nil
 }
+
+// UpdatePasswordHash replaces the stored password hash for the given user.
+func (r *SQLiteUserRepository) UpdatePasswordHash(id uuid.UUID, passwordHash string) error {
+	if _, err := r.db.Exec(`UPDATE users SET password_hash = ? WHERE id = ?`, passwordHash, id.String()); err != nil {
+		return fmt.Errorf("updating password hash: %w", err)
+	}
+	return nil
+}

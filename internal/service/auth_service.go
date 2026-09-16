@@ -15,6 +15,8 @@ type UserRepository interface {
 	// case-insensitively, or nil if none exists.
 	FindByUsername(username string) (*domain.User, error)
 	CountAll() (int, error)
+	// UpdatePasswordHash replaces the stored password hash for the given user.
+	UpdatePasswordHash(id uuid.UUID, passwordHash string) error
 }
 
 // AuthService gates access to the app with a single, simple local account
@@ -83,4 +85,31 @@ func (s *AuthService) Login(username, password string) error {
 	}
 
 	return nil
+}
+
+// ChangePassword verifies the current credentials and replaces the account's
+// password.
+func (s *AuthService) ChangePassword(username, oldPassword, newPassword string) error {
+	if newPassword == "" {
+		return domain.ErrInvalidPassword
+	}
+
+	user, err := s.repo.FindByUsername(username)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return domain.ErrInvalidCredentials
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)); err != nil {
+		return domain.ErrInvalidCredentials
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return s.repo.UpdatePasswordHash(user.ID, string(hash))
 }
