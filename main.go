@@ -32,10 +32,19 @@ func main() {
 	}
 	defer db.Close()
 
-	fichaRepo := repository.NewSQLiteFichaRepository(db)
-	fichaService := service.NewFichaService(fichaRepo)
+	if err := repository.Migrate(db); err != nil {
+		log.Fatalf("migrating database: %v", err)
+	}
 
-	app := NewApp(fichaService)
+	fichaRepo := repository.NewSQLiteFichaRepository(db)
+	acsRepo := repository.NewSQLiteACSRepository(db)
+	userRepo := repository.NewSQLiteUserRepository(db)
+
+	fichaService := service.NewFichaService(fichaRepo, acsRepo)
+	acsService := service.NewACSService(acsRepo, fichaRepo)
+	authService := service.NewAuthService(userRepo)
+
+	app := NewApp(fichaService, acsService, authService)
 
 	err = wails.Run(&options.App{
 		Title:  "ficha-tracker",
