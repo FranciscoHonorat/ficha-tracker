@@ -50,6 +50,14 @@ export function RegisterFicha(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['RegisterFicha'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function StatsByACS(arg1, arg2) {
+  return window['go']['main']['App']['StatsByACS'](arg1, arg2);
+}
+
+export function StatsByRequestType(arg1, arg2) {
+  return window['go']['main']['App']['StatsByRequestType'](arg1, arg2);
+}
+
 export function UpdateACS(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateACS'](arg1, arg2, arg3);
 }

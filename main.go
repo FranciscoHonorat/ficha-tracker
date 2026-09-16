@@ -39,9 +39,14 @@ func main() {
 	fichaRepo := repository.NewSQLiteFichaRepository(db)
 	acsRepo := repository.NewSQLiteACSRepository(db)
 	userRepo := repository.NewSQLiteUserRepository(db)
+	deleteLogRepo := repository.NewSQLiteDeleteLogRepository(db)
 
-	fichaService := service.NewFichaService(fichaRepo, acsRepo)
-	acsService := service.NewACSService(acsRepo, fichaRepo)
+	if err := deleteLogRepo.PurgeOld(); err != nil {
+		log.Fatalf("purging old deletion records: %v", err)
+	}
+
+	fichaService := service.NewFichaService(fichaRepo, acsRepo, deleteLogRepo)
+	acsService := service.NewACSService(acsRepo, fichaRepo, deleteLogRepo)
 	authService := service.NewAuthService(userRepo)
 
 	app := NewApp(fichaService, acsService, authService)

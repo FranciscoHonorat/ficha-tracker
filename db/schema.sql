@@ -16,6 +16,16 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_nocase ON users (username COLLATE NOCASE);
 
+-- Records only the moment a ficha or ACS was deleted, nothing about what was
+-- deleted. Rows older than 90 days are purged at startup (see
+-- internal/repository/sqlite_delete_log_repository.go).
+CREATE TABLE IF NOT EXISTS delete_log (
+    id TEXT PRIMARY KEY,
+    deleted_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_delete_log_deleted_at ON delete_log (deleted_at);
+
 CREATE TABLE IF NOT EXISTS fichas (
     id TEXT PRIMARY KEY,
     full_name TEXT NOT NULL,

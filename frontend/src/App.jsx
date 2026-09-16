@@ -10,6 +10,8 @@ import {
     ListRequestTypes,
     RegisterACS,
     RegisterFicha,
+    StatsByACS,
+    StatsByRequestType,
     UpdateACS,
     UpdateFicha,
 } from "../wailsjs/go/main/App";
@@ -47,6 +49,26 @@ function defaultWhatsAppMessage(ficha) {
     return `Olá ${ficha.fullName}, informamos que sua solicitação de ${ficha.requestType} já está disponível. Por favor, entre em contato conosco.`;
 }
 
+function BarStats({items, emptyLabel}) {
+    if (!items || items.length === 0) {
+        return <p className="empty">{emptyLabel}</p>;
+    }
+    const max = Math.max(...items.map((item) => item.count), 1);
+    return (
+        <div className="bar-stats">
+            {items.map((item) => (
+                <div className="stat-bar-row" key={item.label}>
+                    <span className="stat-bar-label" title={item.label}>{item.label}</span>
+                    <span className="stat-bar-track">
+                        <span className="stat-bar-fill" style={{width: `${(item.count / max) * 100}%`}}/>
+                    </span>
+                    <span className="stat-bar-count">{item.count}</span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 function App() {
     const [loggedIn, setLoggedIn] = useState(false);
 
@@ -82,6 +104,12 @@ function MainApp() {
 
     const [examsACS, setExamsACS] = useState(null);
     const [examsFichas, setExamsFichas] = useState([]);
+
+    const [statsStart, setStatsStart] = useState('');
+    const [statsEnd, setStatsEnd] = useState('');
+    const [requestTypeStats, setRequestTypeStats] = useState([]);
+    const [acsStats, setAcsStats] = useState([]);
+    const [statsError, setStatsError] = useState('');
 
     const loadRequestTypes = () => {
         ListRequestTypes().then(setRequestTypes).catch((err) => setFichaError(String(err)));
@@ -265,11 +293,18 @@ function MainApp() {
         ListFichasByACS(acs.id).then(setExamsFichas).catch((err) => setAcsError(String(err)));
     };
 
+    useEffect(() => {
+        if (activeTab !== 'analises') return;
+        setStatsError('');
+        StatsByRequestType(statsStart, statsEnd).then(setRequestTypeStats).catch((err) => setStatsError(String(err)));
+        StatsByACS(statsStart, statsEnd).then(setAcsStats).catch((err) => setStatsError(String(err)));
+    }, [activeTab, statsStart, statsEnd]);
+
     return (
         <div id="App">
             <header className="header">
                 <h1>Ficha Tracker</h1>
-                <p>Registro de impressão de fichas de saúde</p>
+                <p>Impressão de solicitações</p>
             </header>
 
             <nav className="tabs">
@@ -284,6 +319,12 @@ function MainApp() {
                     onClick={() => setActiveTab('acs')}
                 >
                     ACS
+                </button>
+                <button
+                    className={`tab ${activeTab === 'analises' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('analises')}
+                >
+                    Análises
                 </button>
             </nav>
 
@@ -567,6 +608,61 @@ function MainApp() {
                             )}
                         </section>
                     )}
+                </main>
+            )}
+
+            {activeTab === 'analises' && (
+                <main className="content">
+                    <section className="card">
+                        <h2>Janela de análise</h2>
+                        <div className="date-filters">
+                            <label>
+                                De
+                                <input
+                                    type="date"
+                                    value={statsStart}
+                                    onChange={(e) => setStatsStart(e.target.value)}
+                                />
+                            </label>
+                            <label>
+                                Até
+                                <input
+                                    type="date"
+                                    value={statsEnd}
+                                    onChange={(e) => setStatsEnd(e.target.value)}
+                                />
+                            </label>
+                            {(statsStart || statsEnd) && (
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => {
+                                        setStatsStart('');
+                                        setStatsEnd('');
+                                    }}
+                                >
+                                    Todo o período
+                                </button>
+                            )}
+                        </div>
+                        {statsError && <p className="message error">{statsError}</p>}
+                    </section>
+
+                    <section className="card">
+                        <h2>Exames por tipo de solicitação</h2>
+                        <BarStats
+                            items={requestTypeStats.map((s) => ({label: s.requestType, count: s.count}))}
+                            emptyLabel="Nenhum exame no período selecionado."
+                        />
+                    </section>
+
+                    <section className="card">
+                        <h2>Ranking de ACS</h2>
+                        <BarStats
+                            items={acsStats.map((s) => ({label: s.acsName || '(sem ACS)', count: s.count}))}
+                            emptyLabel="Nenhum exame no período selecionado."
+                        />
+                    </section>
                 </main>
             )}
         </div>

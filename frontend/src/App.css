@@ -251,6 +251,79 @@
     display: none;
 }
 
+.date-filters {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.date-filters label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.85rem;
+    color: #4a6b8a;
+}
+
+.date-filters input {
+    border: 1px solid #c7d9f0;
+    border-radius: 4px;
+    outline: none;
+    height: 34px;
+    padding: 0 10px;
+    background-color: #ffffff;
+    color: #14304d;
+    font-size: 0.95rem;
+}
+
+.bar-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.stat-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stat-bar-label {
+    width: 180px;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    color: #14304d;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stat-bar-track {
+    flex: 1;
+    background: #eef3fb;
+    border-radius: 4px;
+    height: 14px;
+    overflow: hidden;
+}
+
+.stat-bar-fill {
+    display: block;
+    background: #1d4ed8;
+    height: 100%;
+    border-radius: 4px;
+    min-width: 2px;
+}
+
+.stat-bar-count {
+    width: 32px;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #14304d;
+}
+
 @media print {
     body * {
         visibility: hidden;

@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ficha-tracker/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,6 +65,35 @@ func TestMigrate_BackfillsLegacyACS(t *testing.T) {
 	require.NoError(t, db.QueryRow(`SELECT phone, notified FROM fichas WHERE id = ?`, johnID).Scan(&phone, &notified))
 	assert.Equal(t, "", phone)
 	assert.True(t, notified)
+}
+
+// TestMigrate_AllowsSavingNewFichasAfterward reproduces a bug where the
+// legacy "acs" column (NOT NULL, no default on a migrated database, since
+// ALTER TABLE ADD COLUMN never touches it) made every new Save() fail once
+// a real database had gone through the legacy-to-v2 migration.
+func TestMigrate_AllowsSavingNewFichasAfterward(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "legacy.db")
+	db, err := OpenDB(dbPath, legacySchema)
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
+
+	_, err = db.Exec(
+		`INSERT INTO fichas (id, full_name, request_type, acs, created_at) VALUES (?, ?, ?, ?, ?)`,
+		uuid.New().String(), "John Doe", "Exame de sangue", "Maria ACS", "2024-01-15T10:00:00Z",
+	)
+	require.NoError(t, err)
+	require.NoError(t, Migrate(db))
+
+	fichaRepo := NewSQLiteFichaRepository(db)
+	acsRepo := NewSQLiteACSRepository(db)
+
+	acsList, err := acsRepo.FindAll()
+	require.NoError(t, err)
+	require.Len(t, acsList, 1)
+
+	newFicha, err := domain.NewFicha(uuid.New(), "Jane Smith", "RX", acsList[0].ID, "11988887777", true)
+	require.NoError(t, err)
+	assert.NoError(t, fichaRepo.Save(newFicha))
 }
 
 func TestMigrate_NoopOnFreshSchema(t *testing.T) {

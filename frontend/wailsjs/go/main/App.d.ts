@@ -26,6 +26,10 @@ export function RegisterACS(arg1:string,arg2:string):Promise<main.ACSView>;
 
 export function RegisterFicha(arg1:string,arg2:string,arg3:string,arg4:string,arg5:boolean):Promise<main.FichaView>;
 
+export function StatsByACS(arg1:string,arg2:string):Promise<Array<main.ACSStatView>>;
+
+export function StatsByRequestType(arg1:string,arg2:string):Promise<Array<main.RequestTypeStatView>>;
+
 export function UpdateACS(arg1:string,arg2:string,arg3:string):Promise<main.ACSView>;
 
 export function UpdateFicha(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:boolean):Promise<main.FichaView>;

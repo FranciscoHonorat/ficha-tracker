@@ -78,6 +78,30 @@ func (r *fakeFichaRepository) CountByACSID(acsID uuid.UUID) (int, error) {
 	return len(fichas), err
 }
 
+func (r *fakeFichaRepository) CountByRequestType(start, end string) ([]domain.RequestTypeStat, error) {
+	counts := map[string]int{}
+	for _, f := range r.saved {
+		counts[f.RequestType]++
+	}
+	var stats []domain.RequestTypeStat
+	for requestType, count := range counts {
+		stats = append(stats, domain.RequestTypeStat{RequestType: requestType, Count: count})
+	}
+	return stats, nil
+}
+
+func (r *fakeFichaRepository) CountByACS(start, end string) ([]domain.ACSStat, error) {
+	counts := map[uuid.UUID]int{}
+	for _, f := range r.saved {
+		counts[f.ACSID]++
+	}
+	var stats []domain.ACSStat
+	for acsID, count := range counts {
+		stats = append(stats, domain.ACSStat{ACSID: acsID, Count: count})
+	}
+	return stats, nil
+}
+
 func (r *fakeFichaRepository) FindMonths() ([]string, error) {
 	if r.findErr != nil {
 		return nil, r.findErr
@@ -119,12 +143,25 @@ func (r *fakeACSRepositoryForFicha) FindByNameExact(name string) (*domain.ACS, e
 	return nil, nil
 }
 
+type fakeDeleteLogRepository struct {
+	records int
+	err     error
+}
+
+func (r *fakeDeleteLogRepository) Record() error {
+	if r.err != nil {
+		return r.err
+	}
+	r.records++
+	return nil
+}
+
 func newTestFichaService(t *testing.T) (*FichaService, uuid.UUID) {
 	t.Helper()
 	acsID := uuid.New()
 	repo := &fakeFichaRepository{}
 	acsRepo := newFakeACSRepositoryForFicha(acsID)
-	return NewFichaService(repo, acsRepo), acsID
+	return NewFichaService(repo, acsRepo, &fakeDeleteLogRepository{}), acsID
 }
 
 func TestFichaService_RegisterFicha(t *testing.T) {
@@ -160,7 +197,7 @@ func TestFichaService_RegisterFicha(t *testing.T) {
 		acsID := uuid.New()
 		repo := &fakeFichaRepository{saveErr: errors.New("disk full")}
 		acsRepo := newFakeACSRepositoryForFicha(acsID)
-		service := NewFichaService(repo, acsRepo)
+		service := NewFichaService(repo, acsRepo, &fakeDeleteLogRepository{})
 
 		ficha, err := service.RegisterFicha("John Doe", "Exame de sangue", acsID, "", true)
 
@@ -185,6 +222,33 @@ func TestFichaService_UpdateAndDeleteFicha(t *testing.T) {
 	fichas, err := service.ListFichas("", "")
 	require.NoError(t, err)
 	assert.Empty(t, fichas)
+}
+
+func TestFichaService_DeleteFicha_LogsDeletion(t *testing.T) {
+	acsID := uuid.New()
+	repo := &fakeFichaRepository{}
+	acsRepo := newFakeACSRepositoryForFicha(acsID)
+	deleteLog := &fakeDeleteLogRepository{}
+	service := NewFichaService(repo, acsRepo, deleteLog)
+
+	ficha, err := service.RegisterFicha("John Doe", "Exame de sangue", acsID, "", true)
+	require.NoError(t, err)
+
+	require.NoError(t, service.DeleteFicha(ficha.ID))
+	assert.Equal(t, 1, deleteLog.records)
+}
+
+func TestFichaService_DeleteFicha_PropagatesDeleteLogError(t *testing.T) {
+	acsID := uuid.New()
+	repo := &fakeFichaRepository{}
+	acsRepo := newFakeACSRepositoryForFicha(acsID)
+	deleteLog := &fakeDeleteLogRepository{err: errors.New("disk full")}
+	service := NewFichaService(repo, acsRepo, deleteLog)
+
+	ficha, err := service.RegisterFicha("John Doe", "Exame de sangue", acsID, "", true)
+	require.NoError(t, err)
+
+	assert.Error(t, service.DeleteFicha(ficha.ID))
 }
 
 func TestFichaService_ListFichas(t *testing.T) {
@@ -251,4 +315,36 @@ func TestFichaService_ListAvailableMonths(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Contains(t, months, time.Now().Format("2006-01"))
+}
+
+func TestFichaService_StatsByRequestType(t *testing.T) {
+	service, acsID := newTestFichaService(t)
+
+	_, _ = service.RegisterFicha("John Doe", "Exame de sangue", acsID, "", true)
+	_, _ = service.RegisterFicha("Jane Doe", "Exame de sangue", acsID, "", true)
+	_, _ = service.RegisterFicha("Mary Doe", "RX", acsID, "", true)
+
+	stats, err := service.StatsByRequestType("", "")
+	require.NoError(t, err)
+	require.Len(t, stats, 2)
+
+	byType := map[string]int{}
+	for _, s := range stats {
+		byType[s.RequestType] = s.Count
+	}
+	assert.Equal(t, 2, byType["Exame de sangue"])
+	assert.Equal(t, 1, byType["RX"])
+}
+
+func TestFichaService_StatsByACS(t *testing.T) {
+	service, acsID := newTestFichaService(t)
+
+	_, _ = service.RegisterFicha("John Doe", "Exame de sangue", acsID, "", true)
+	_, _ = service.RegisterFicha("Jane Doe", "RX", acsID, "", true)
+
+	stats, err := service.StatsByACS("", "")
+	require.NoError(t, err)
+	require.Len(t, stats, 1)
+	assert.Equal(t, acsID, stats[0].ACSID)
+	assert.Equal(t, 2, stats[0].Count)
 }
