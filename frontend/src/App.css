@@ -108,6 +108,174 @@
     color: #1d7a4c;
 }
 
+.message.warning {
+    color: #9a6a00;
+}
+
+.login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 360px;
+}
+
+.login-card h1 {
+    margin: 0 0 4px;
+    color: #1d4ed8;
+    font-size: 1.5rem;
+    text-align: center;
+}
+
+.login-subtitle {
+    margin: 0 0 16px;
+    color: #4a6b8a;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.tabs {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.tab {
+    border: 1px solid #c7d9f0;
+    background: #ffffff;
+    color: #4a6b8a;
+    border-radius: 999px;
+    padding: 6px 18px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.tab.active {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #ffffff;
+}
+
+.form select {
+    border: 1px solid #c7d9f0;
+    border-radius: 4px;
+    outline: none;
+    height: 34px;
+    padding: 0 10px;
+    background-color: #ffffff;
+    color: #14304d;
+    font-size: 0.95rem;
+}
+
+.form select:focus {
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.15);
+}
+
+.form-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-secondary {
+    background-color: #e7edf7;
+    color: #14304d;
+}
+
+.btn-secondary:hover {
+    background-color: #d6e0f2;
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+.actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.icon-btn {
+    border: 1px solid #c7d9f0;
+    background: #ffffff;
+    color: #1d4ed8;
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.icon-btn:hover {
+    background: #eef3fb;
+}
+
+.icon-btn.danger {
+    color: #c0362c;
+    border-color: #f0c9c5;
+}
+
+.icon-btn.danger:hover {
+    background: #fbeceb;
+}
+
+.icon-btn.whatsapp {
+    color: #1d7a4c;
+    border-color: #bfe3cd;
+}
+
+.icon-btn.whatsapp:hover {
+    background: #e9f8ef;
+}
+
+.link-btn {
+    background: none;
+    border: none;
+    color: #1d4ed8;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+    font-size: inherit;
+    text-decoration: underline;
+}
+
+.print-only {
+    display: none;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .printable, .printable * {
+        visibility: visible;
+    }
+
+    .printable {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    .printable .no-print {
+        display: none;
+    }
+
+    .printable .print-only {
+        display: block;
+    }
+}
+
 .list-header {
     display: flex;
     justify-content: space-between;

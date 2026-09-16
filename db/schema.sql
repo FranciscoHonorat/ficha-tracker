@@ -29,4 +29,8 @@ CREATE TABLE IF NOT EXISTS fichas (
 
 CREATE INDEX IF NOT EXISTS idx_fichas_full_name ON fichas (full_name);
 CREATE INDEX IF NOT EXISTS idx_fichas_created_at ON fichas (created_at);
-CREATE INDEX IF NOT EXISTS idx_fichas_acs_id ON fichas (acs_id);
+-- idx_fichas_acs_id is created by Migrate() (internal/repository/migrate.go),
+-- not here: on a pre-v2.0 database this schema is applied against an
+-- existing "fichas" table that doesn't have acs_id yet (CREATE TABLE IF NOT
+-- EXISTS is a no-op on it), and Migrate() runs right after to add the
+-- column before any index on it can be created.

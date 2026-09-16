@@ -17,9 +17,24 @@ func Migrate(db *sql.DB) error {
 		return fmt.Errorf("checking fichas.acs_id: %w", err)
 	}
 	if hasACSID {
-		return nil
+		return ensureACSIDIndex(db)
 	}
 
+	if err := migrateLegacyACS(db); err != nil {
+		return err
+	}
+
+	return ensureACSIDIndex(db)
+}
+
+func ensureACSIDIndex(db *sql.DB) error {
+	if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_fichas_acs_id ON fichas (acs_id)`); err != nil {
+		return fmt.Errorf("creating fichas.acs_id index: %w", err)
+	}
+	return nil
+}
+
+func migrateLegacyACS(db *sql.DB) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("beginning migration: %w", err)
