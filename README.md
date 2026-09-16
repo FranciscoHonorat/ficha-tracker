@@ -32,7 +32,7 @@ Em sistemas com `libwebkit2gtk-4.0-dev` disponível, basta `wails dev`.
 ## Build de produção
 
 ```bash
-wails build -tags webkit2_41
+wails build -tags webkit2_4
 ```
 
 Gera o executável em `build/bin/ficha-tracker`. Para gerar o `.exe` do Windows,
