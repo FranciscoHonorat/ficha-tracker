@@ -56,3 +56,18 @@ func TestSQLiteUserRepository_SaveFindCount(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, missing)
 }
+
+func TestSQLiteUserRepository_UpdatePasswordHash(t *testing.T) {
+	repo := newTestUserRepository(t)
+
+	user, err := domain.NewUser(uuid.New(), "admin", "hashed-password")
+	require.NoError(t, err)
+	require.NoError(t, repo.Save(user))
+
+	require.NoError(t, repo.UpdatePasswordHash(user.ID, "new-hash"))
+
+	found, err := repo.FindByUsername("admin")
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, "new-hash", found.PasswordHash)
+}

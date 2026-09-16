@@ -1,8 +1,12 @@
 import {useEffect, useState} from 'react';
 import './App.css';
 import {
+    BackupDatabase,
+    ChangePassword,
     DeleteACS,
     DeleteFicha,
+    ExportFichasCSV,
+    ExportStatsCSV,
     ListACS,
     ListAvailableMonths,
     ListFichas,
@@ -20,6 +24,14 @@ import Login from './Login';
 
 const emptyFichaForm = {fullName: '', requestType: '', requestTypeOther: '', acsId: '', phone: '', notified: true};
 const emptyACSForm = {name: '', phone: ''};
+const emptyPasswordForm = {username: '', oldPassword: '', newPassword: '', confirmNewPassword: ''};
+
+function toDateInput(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
 
 function currentMonth() {
     const now = new Date();
@@ -110,6 +122,18 @@ function MainApp() {
     const [requestTypeStats, setRequestTypeStats] = useState([]);
     const [acsStats, setAcsStats] = useState([]);
     const [statsError, setStatsError] = useState('');
+    const [statsMessage, setStatsMessage] = useState('');
+
+    const [pendingOnly, setPendingOnly] = useState(false);
+
+    const [backupSubmitting, setBackupSubmitting] = useState(false);
+    const [backupMessage, setBackupMessage] = useState('');
+    const [backupError, setBackupError] = useState('');
+
+    const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
+    const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
     const loadRequestTypes = () => {
         ListRequestTypes().then(setRequestTypes).catch((err) => setFichaError(String(err)));
@@ -300,6 +324,78 @@ function MainApp() {
         StatsByACS(statsStart, statsEnd).then(setAcsStats).catch((err) => setStatsError(String(err)));
     }, [activeTab, statsStart, statsEnd]);
 
+    const applyStatsPreset = (days) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - (days - 1));
+        setStatsStart(toDateInput(start));
+        setStatsEnd(toDateInput(end));
+    };
+
+    const applyStatsThisMonth = () => {
+        const now = new Date();
+        setStatsStart(toDateInput(new Date(now.getFullYear(), now.getMonth(), 1)));
+        setStatsEnd(toDateInput(now));
+    };
+
+    const exportFichasCSV = () => {
+        setFichaError('');
+        setFichaSuccess('');
+        ExportFichasCSV(query.trim(), selectedMonth)
+            .then((path) => {
+                if (path) setFichaSuccess(`CSV exportado em: ${path}`);
+            })
+            .catch((err) => setFichaError(String(err)));
+    };
+
+    const exportStatsCSV = () => {
+        setStatsError('');
+        setStatsMessage('');
+        ExportStatsCSV(statsStart, statsEnd)
+            .then((path) => {
+                if (path) setStatsMessage(`CSV exportado em: ${path}`);
+            })
+            .catch((err) => setStatsError(String(err)));
+    };
+
+    const handleBackup = () => {
+        setBackupError('');
+        setBackupMessage('');
+        setBackupSubmitting(true);
+        BackupDatabase()
+            .then((path) => {
+                if (path) setBackupMessage(`Backup salvo em: ${path}`);
+            })
+            .catch((err) => setBackupError(String(err)))
+            .finally(() => setBackupSubmitting(false));
+    };
+
+    const updatePasswordField = (field) => (e) => {
+        setPasswordForm((prev) => ({...prev, [field]: e.target.value}));
+    };
+
+    const submitPasswordChange = (e) => {
+        e.preventDefault();
+        setPasswordError('');
+        setPasswordSuccess('');
+
+        if (passwordForm.newPassword !== passwordForm.confirmNewPassword) {
+            setPasswordError('As novas senhas não coincidem.');
+            return;
+        }
+
+        setPasswordSubmitting(true);
+        ChangePassword(passwordForm.username.trim(), passwordForm.oldPassword, passwordForm.newPassword)
+            .then(() => {
+                setPasswordSuccess('Senha alterada com sucesso.');
+                setPasswordForm(emptyPasswordForm);
+            })
+            .catch((err) => setPasswordError(String(err)))
+            .finally(() => setPasswordSubmitting(false));
+    };
+
+    const visibleFichas = pendingOnly ? fichas.filter((f) => !f.notified) : fichas;
+
     return (
         <div id="App">
             <header className="header">
@@ -325,6 +421,12 @@ function MainApp() {
                     onClick={() => setActiveTab('analises')}
                 >
                     Análises
+                </button>
+                <button
+                    className={`tab ${activeTab === 'conta' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('conta')}
+                >
+                    Conta
                 </button>
             </nav>
 
@@ -430,10 +532,21 @@ function MainApp() {
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
                                 />
+                                <label className="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={pendingOnly}
+                                        onChange={(e) => setPendingOnly(e.target.checked)}
+                                    />
+                                    Pendentes de aviso
+                                </label>
+                                <button type="button" className="btn btn-secondary" onClick={exportFichasCSV}>
+                                    Exportar CSV
+                                </button>
                             </div>
                         </div>
 
-                        {fichas.length === 0 ? (
+                        {visibleFichas.length === 0 ? (
                             <p className="empty">Nenhuma ficha encontrada.</p>
                         ) : (
                             <div className="table-wrap">
@@ -450,7 +563,7 @@ function MainApp() {
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    {fichas.map((f) => (
+                                    {visibleFichas.map((f) => (
                                         <tr key={f.id}>
                                             <td>{f.fullName}</td>
                                             <td>{f.requestType}</td>
@@ -632,6 +745,20 @@ function MainApp() {
                                     onChange={(e) => setStatsEnd(e.target.value)}
                                 />
                             </label>
+                        </div>
+                        <div className="date-filters">
+                            <button type="button" className="btn btn-secondary" onClick={() => applyStatsPreset(7)}>
+                                Últimos 7 dias
+                            </button>
+                            <button type="button" className="btn btn-secondary" onClick={() => applyStatsPreset(30)}>
+                                Últimos 30 dias
+                            </button>
+                            <button type="button" className="btn btn-secondary" onClick={() => applyStatsPreset(90)}>
+                                Últimos 90 dias
+                            </button>
+                            <button type="button" className="btn btn-secondary" onClick={applyStatsThisMonth}>
+                                Este mês
+                            </button>
                             {(statsStart || statsEnd) && (
                                 <button
                                     type="button"
@@ -644,8 +771,12 @@ function MainApp() {
                                     Todo o período
                                 </button>
                             )}
+                            <button type="button" className="btn" onClick={exportStatsCSV}>
+                                Exportar CSV
+                            </button>
                         </div>
                         {statsError && <p className="message error">{statsError}</p>}
+                        {statsMessage && <p className="message success">{statsMessage}</p>}
                     </section>
 
                     <section className="card">
@@ -662,6 +793,73 @@ function MainApp() {
                             items={acsStats.map((s) => ({label: s.acsName || '(sem ACS)', count: s.count}))}
                             emptyLabel="Nenhum exame no período selecionado."
                         />
+                    </section>
+                </main>
+            )}
+
+            {activeTab === 'conta' && (
+                <main className="content">
+                    <section className="card">
+                        <h2>Backup do banco de dados</h2>
+                        <p className="hint">
+                            Salve uma cópia do banco de dados antes de atualizar o aplicativo ou trocar de computador.
+                        </p>
+                        <button type="button" className="btn" onClick={handleBackup} disabled={backupSubmitting}>
+                            {backupSubmitting ? 'Salvando...' : 'Fazer backup'}
+                        </button>
+                        {backupError && <p className="message error">{backupError}</p>}
+                        {backupMessage && <p className="message success">{backupMessage}</p>}
+                    </section>
+
+                    <section className="card">
+                        <h2>Trocar senha</h2>
+                        <form onSubmit={submitPasswordChange} className="form">
+                            <label>
+                                Usuário
+                                <input
+                                    type="text"
+                                    value={passwordForm.username}
+                                    onChange={updatePasswordField('username')}
+                                    autoComplete="username"
+                                    required
+                                />
+                            </label>
+                            <label>
+                                Senha atual
+                                <input
+                                    type="password"
+                                    value={passwordForm.oldPassword}
+                                    onChange={updatePasswordField('oldPassword')}
+                                    autoComplete="current-password"
+                                    required
+                                />
+                            </label>
+                            <label>
+                                Nova senha
+                                <input
+                                    type="password"
+                                    value={passwordForm.newPassword}
+                                    onChange={updatePasswordField('newPassword')}
+                                    autoComplete="new-password"
+                                    required
+                                />
+                            </label>
+                            <label>
+                                Confirmar nova senha
+                                <input
+                                    type="password"
+                                    value={passwordForm.confirmNewPassword}
+                                    onChange={updatePasswordField('confirmNewPassword')}
+                                    autoComplete="new-password"
+                                    required
+                                />
+                            </label>
+                            <button type="submit" className="btn" disabled={passwordSubmitting}>
+                                {passwordSubmitting ? 'Salvando...' : 'Trocar senha'}
+                            </button>
+                        </form>
+                        {passwordError && <p className="message error">{passwordError}</p>}
+                        {passwordSuccess && <p className="message success">{passwordSuccess}</p>}
                     </section>
                 </main>
             )}

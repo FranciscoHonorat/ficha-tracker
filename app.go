@@ -1,25 +1,31 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/csv"
+	"fmt"
+	"os"
 	"time"
 
 	"ficha-tracker/internal/domain"
 	"ficha-tracker/internal/service"
 
 	"github.com/google/uuid"
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App is the Wails binding layer exposing the services to the frontend.
 type App struct {
-	ctx     context.Context
-	fichaSv *service.FichaService
-	acsSv   *service.ACSService
-	authSv  *service.AuthService
+	ctx      context.Context
+	fichaSv  *service.FichaService
+	acsSv    *service.ACSService
+	authSv   *service.AuthService
+	backupSv *service.BackupService
 }
 
-func NewApp(fichaSv *service.FichaService, acsSv *service.ACSService, authSv *service.AuthService) *App {
-	return &App{fichaSv: fichaSv, acsSv: acsSv, authSv: authSv}
+func NewApp(fichaSv *service.FichaService, acsSv *service.ACSService, authSv *service.AuthService, backupSv *service.BackupService) *App {
+	return &App{fichaSv: fichaSv, acsSv: acsSv, authSv: authSv, backupSv: backupSv}
 }
 
 func (a *App) startup(ctx context.Context) {
@@ -112,6 +118,116 @@ func (a *App) CreateAccount(username, password string) error {
 // Login verifies the given credentials against the stored account.
 func (a *App) Login(username, password string) error {
 	return a.authSv.Login(username, password)
+}
+
+// ChangePassword verifies the current credentials and replaces the
+// account's password.
+func (a *App) ChangePassword(username, oldPassword, newPassword string) error {
+	return a.authSv.ChangePassword(username, oldPassword, newPassword)
+}
+
+// saveFile prompts the user for a destination file via the native save
+// dialog. It returns an empty path (and no error) if the user cancels.
+func (a *App) saveFile(title, defaultFilename, filterName, filterPattern string) (string, error) {
+	return wailsruntime.SaveFileDialog(a.ctx, wailsruntime.SaveDialogOptions{
+		Title:           title,
+		DefaultFilename: defaultFilename,
+		Filters:         []wailsruntime.FileFilter{{DisplayName: filterName, Pattern: filterPattern}},
+	})
+}
+
+// BackupDatabase prompts the user for a destination and writes a consistent
+// snapshot of the database there. Returns the chosen path, or an empty
+// string if the user cancelled the dialog.
+func (a *App) BackupDatabase() (string, error) {
+	defaultName := fmt.Sprintf("ficha-tracker-backup-%s.db", time.Now().Format("2006-01-02"))
+	path, err := a.saveFile("Salvar backup do banco de dados", defaultName, "Banco de dados (*.db)", "*.db")
+	if err != nil || path == "" {
+		return "", err
+	}
+	if err := a.backupSv.Backup(path); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// ExportFichasCSV exports fichas matching the given filters to a CSV file
+// chosen by the user. Returns the chosen path, or an empty string if the
+// user cancelled the dialog.
+func (a *App) ExportFichasCSV(name, month string) (string, error) {
+	fichas, err := a.fichaSv.ListFichas(name, month)
+	if err != nil {
+		return "", err
+	}
+
+	defaultName := fmt.Sprintf("fichas-%s.csv", time.Now().Format("2006-01-02"))
+	path, err := a.saveFile("Exportar fichas em CSV", defaultName, "CSV (*.csv)", "*.csv")
+	if err != nil || path == "" {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"Nome", "Tipo de solicitação", "ACS", "Telefone", "Avisado", "Registrado em"})
+	for _, f := range fichas {
+		notified := "Não"
+		if f.Notified {
+			notified = "Sim"
+		}
+		_ = w.Write([]string{f.FullName, f.RequestType, f.ACSName, f.Phone, notified, f.CreatedAt.Format(time.RFC3339)})
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return "", fmt.Errorf("building csv: %w", err)
+	}
+
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		return "", fmt.Errorf("writing csv: %w", err)
+	}
+	return path, nil
+}
+
+// ExportStatsCSV exports the request-type and ACS analytics for the given
+// window to a CSV file chosen by the user. Returns the chosen path, or an
+// empty string if the user cancelled the dialog.
+func (a *App) ExportStatsCSV(start, end string) (string, error) {
+	requestTypeStats, err := a.fichaSv.StatsByRequestType(start, end)
+	if err != nil {
+		return "", err
+	}
+	acsStats, err := a.fichaSv.StatsByACS(start, end)
+	if err != nil {
+		return "", err
+	}
+
+	defaultName := fmt.Sprintf("analises-%s.csv", time.Now().Format("2006-01-02"))
+	path, err := a.saveFile("Exportar análises em CSV", defaultName, "CSV (*.csv)", "*.csv")
+	if err != nil || path == "" {
+		return "", err
+	}
+
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"Exames por tipo de solicitação"})
+	_ = w.Write([]string{"Tipo de solicitação", "Quantidade"})
+	for _, s := range requestTypeStats {
+		_ = w.Write([]string{s.RequestType, fmt.Sprintf("%d", s.Count)})
+	}
+	_ = w.Write([]string{})
+	_ = w.Write([]string{"Ranking de ACS"})
+	_ = w.Write([]string{"ACS", "Quantidade"})
+	for _, s := range acsStats {
+		_ = w.Write([]string{s.ACSName, fmt.Sprintf("%d", s.Count)})
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return "", fmt.Errorf("building csv: %w", err)
+	}
+
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		return "", fmt.Errorf("writing csv: %w", err)
+	}
+	return path, nil
 }
 
 // ListRequestTypes returns the canonical list of ficha request types.
